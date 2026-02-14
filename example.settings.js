@@ -14,6 +14,8 @@ export const AUTO_READ = true;        // mark messages as read automatically
 export const AUTO_TYPING = true;      // show typing indicator before responding
 export const REPLY_IN_DM_ONLY = false; // if true, bot ignores group messages
 export const OWNER_ONLY = false;       // if true, only owner can use commands
+export const AUTO_VIEW_STATUS = true;
+export const AUTO_LIKE_STATUS = true;
 
 // ─── Connection ────────────────────────────────────────────────────────────────
 export const RECONNECT_INTERVAL = 5000;  // ms to wait before reconnecting
