@@ -1,6 +1,6 @@
 import { BOT_NAME, BOT_VERSION, PREFIX, OWNER_NUMBER } from '../settings.js';
 
-const MENU_IMAGE = 'https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExazE4Y2swMjl0ZGR3d3hxbmp0cHFwMHF2dWtveWxkZ2c1MGd6cHYxOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/PrVAwWYQl1JPG/giphy.gif';
+const MENU_IMAGE = 'https://i.pinimg.com/736x/b2/da/ab/b2daab948936d5dd320eeb2d6209f8ce.jpg';
 const CHANNEL_JID = '120363426440331517@newsletter';
 const CHANNEL_NAME = 'Luthor MD';
 
