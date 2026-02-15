@@ -100,6 +100,7 @@ function getBody(msg) {
 
 // ── Welcome & Goodbye ──────────────────────────────────────────────────────
 
+// In your group.js - update the function to match official structure
 export async function handleGroupParticipantsUpdate(sock, update) {
     const { id, participants, action } = update;
 
@@ -127,7 +128,6 @@ export async function handleGroupParticipantsUpdate(sock, update) {
         }
     }
 }
-
 // ── Anti Delete ────────────────────────────────────────────────────────────
 
 export async function handleAntiDelete(sock, msg) {

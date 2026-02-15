@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: lexluthor
+    env: docker
+    plan: free
+    healthCheckPath: /status
+    envVars:
+      - key: SESSION_ID
+        sync: false
+      - key: OWNER_NUMBER
+        sync: false
+      - key: BOT_NAME
+        value: Luthor MD
+      - key: WELCOME
+        value: true
+      - key: GOODBYE
+        value: true
+      - key: ANTI_DELETE
+        value: true
+      - key: ANTI_LINK
+        value: true
+      - key: AUTO_VIEW_STATUS
+        value: true
+      - key: AUTO_LIKE_STATUS
+        value: true
+    autoDeploy: true

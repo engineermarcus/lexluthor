@@ -5,12 +5,21 @@ RUN apk add --no-cache ffmpeg libwebp-tools
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
-RUN npm install
 
+# Install dependencies
+RUN npm install --production
+
+# Copy application files
 COPY . .
 
-RUN cp example.settings.js settings.js 2>/dev/null || true
+# Create necessary directories
+RUN mkdir -p bot_session temp
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/status', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 EXPOSE 3001
 

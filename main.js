@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import express from 'express';
+import NodeCache from 'node-cache';
 import { handleUtility } from './commands/utility.js';
 import { sendMenu } from './commands/menu.js';
 import { handleFunCommand } from './commands/fun.js';
@@ -25,13 +26,56 @@ const API_PORT = process.env.API_PORT || 3001;
 const SESSION_MANAGER_URL = 'https://lexluthermd.onrender.com';
 api.use(express.json());
 
+// Group metadata cache for Baileys v7
+const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
+
+// Health monitoring
+let lastActivity = Date.now();
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+
+function updateActivity() {
+    lastActivity = Date.now();
+    reconnectAttempts = 0;
+}
+
+function startHealthMonitor() {
+    setInterval(() => {
+        const inactiveTime = Date.now() - lastActivity;
+        
+        // If inactive for more than 5 minutes, force reconnect
+        if (inactiveTime > 5 * 60 * 1000) {
+            console.log('⚠️ Bot inactive for too long, forcing reconnect...');
+            if (sock && sock.ws) {
+                sock.ws.close();
+            }
+        }
+
+        // Send keepalive ping
+        if (sock && sock.user) {
+            sock.sendPresenceUpdate('available').catch(() => {});
+        }
+    }, 30000); // Check every 30 seconds
+}
+
 api.get('/status', (req, res) => {
     res.json({
         bot: BOT_NAME,
         version: BOT_VERSION,
         status: sock?.user ? 'connected' : 'disconnected',
         number: sock?.user?.id?.split(':')[0] || null,
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        lastActivity: new Date(lastActivity).toISOString()
+    });
+});
+
+api.get('/ping', (req, res) => {
+    updateActivity();
+    res.json({ 
+        status: 'alive', 
+        uptime: process.uptime(),
+        lastActivity: new Date(lastActivity).toISOString(),
+        connected: sock?.user ? true : false
     });
 });
 
@@ -125,20 +169,33 @@ async function startBot() {
         maxMsgRetryCount: 5,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: KEEP_ALIVE_INTERVAL,
+        cachedGroupMetadata: async (jid) => groupCache.get(jid),
     });
 
 
     registerAntiDelete(sock);
 
     sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+            console.log('⚠️ QR Code generated - session might be invalid');
+        }
+
+        if (connection === 'connecting') {
+            console.log('🔄 Connecting to WhatsApp...');
+        }
 
         if (connection === 'open') {
             console.log(`✅ ${BOT_NAME} v${BOT_VERSION} connected!`);
+            updateActivity();
+            reconnectAttempts = 0;
+
             if (isFirstConnect) {
                 isFirstConnect = false;
+                startHealthMonitor();
                 await sock.sendMessage(`${OWNER_NUMBER}@s.whatsapp.net`, {
-                    text: `🟢 *${BOT_NAME} v${BOT_VERSION} is connected*`
+                    text: `🟢 *${BOT_NAME} v${BOT_VERSION} is connected*\n\n_Uptime: ${Math.floor(process.uptime())}s_`
                 });
             }
         }
@@ -148,29 +205,72 @@ async function startBot() {
             const reason = lastDisconnect?.error?.message || 'Unknown';
             console.log(`🔌 Disconnected — reason: ${reason} (code: ${statusCode})`);
 
+            let shouldReconnect = true;
+            let delay = RECONNECT_INTERVAL;
+
             if (statusCode === DisconnectReason.loggedOut) {
                 console.log('🚪 Logged out — clearing local session...');
                 if (fs.existsSync(AUTH_DIR)) fs.rmSync(AUTH_DIR, { recursive: true, force: true });
                 isFirstConnect = true;
-                setTimeout(() => startBot(), RECONNECT_INTERVAL);
+                shouldReconnect = true;
             } else if (statusCode === DisconnectReason.restartRequired) {
-                setTimeout(() => startBot(), 3000);
-            } else {
-                console.log(`🔄 Reconnecting in ${RECONNECT_INTERVAL / 1000}s...`);
-                setTimeout(() => startBot(), RECONNECT_INTERVAL);
+                console.log('🔄 Restart required');
+                delay = 3000;
+            } else if (statusCode === DisconnectReason.timedOut) {
+                console.log('⏱️ Connection timed out');
+                delay = 5000;
+            } else if (statusCode === DisconnectReason.badSession) {
+                console.log('❌ Bad session, clearing...');
+                if (fs.existsSync(AUTH_DIR)) fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+                isFirstConnect = true;
+            } else if (statusCode === DisconnectReason.connectionClosed) {
+                console.log('🔌 Connection closed');
+            } else if (statusCode === DisconnectReason.connectionLost) {
+                console.log('📡 Connection lost');
+            }
+
+            if (shouldReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                console.log(`🔄 Reconnecting in ${delay / 1000}s... (Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+                setTimeout(() => startBot(), delay);
+            } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                console.log('❌ Max reconnection attempts reached. Waiting 5 minutes before retry...');
+                setTimeout(() => {
+                    reconnectAttempts = 0;
+                    startBot();
+                }, 5 * 60 * 1000);
             }
         }
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // ── Group participants update ───────────────────────────────────────────
+    // Cache group metadata when groups are updated
+    sock.ev.on('groups.update', async (updates) => {
+        for (const update of updates) {
+            try {
+                const metadata = await sock.groupMetadata(update.id);
+                groupCache.set(update.id, metadata);
+            } catch (err) {
+                console.error('❌ groups.update cache error:', err.message);
+            }
+        }
+    });
+
+    // Handle group participants (welcome/goodbye)
     sock.ev.on('group-participants.update', async (update) => {
-        await handleGroupParticipantsUpdate(sock, update);
+        try {
+            const metadata = await sock.groupMetadata(update.id);
+            groupCache.set(update.id, metadata);
+            await handleGroupParticipantsUpdate(sock, update);
+        } catch (err) {
+            console.error('❌ group-participants.update error:', err.message);
+        }
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
+        updateActivity(); // Update activity on every message
 
         for (const msg of messages) {
             if (!msg.message) continue;
@@ -232,7 +332,7 @@ async function startBot() {
 
                 case 'alive':
                     await sock.sendMessage(from, {
-                        text: `✅ *${BOT_NAME} v${BOT_VERSION}*\n\n> Running 24/7\n> Prefix: ${PREFIX}\n> Owner: ${OWNER_NUMBER}`
+                        text: `✅ *${BOT_NAME} v${BOT_VERSION}*\n\n> Running 24/7\n> Prefix: ${PREFIX}\n> Owner: ${OWNER_NUMBER}\n> Uptime: ${Math.floor(process.uptime())}s`
                     }, { quoted: msg });
                     break;
 
