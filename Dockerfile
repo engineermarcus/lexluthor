@@ -47,3 +47,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 EXPOSE 3001 4416
 
 CMD ["/app/start.sh"]
+
+
