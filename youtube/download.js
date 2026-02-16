@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 const execAsync = promisify(exec);
+const fileTimestamps = new Map();
 
 const DOWNLOAD_DIR = './downloads';
 const COOKIES_FILE = './cookies.txt';
@@ -87,6 +88,7 @@ export async function downloadYouTube(url, format = 'mp4') {
 
         const downloadedFile = files[0];
         console.log(`✅ Downloaded: ${path.basename(downloadedFile)}`);
+        fileTimestamps.set(downloadedFile, Date.now());
 
         return {
             success: true,
@@ -146,3 +148,44 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         }
     });
 }
+
+/**
+ * Auto-cleanup files older than 3 minutes
+ */
+function autoCleanup() {
+    const now = Date.now();
+    const MAX_AGE = 3 * 60 * 1000; // 3 minutes
+
+    try {
+        // Check tracked files
+        for (const [filepath, timestamp] of fileTimestamps.entries()) {
+            if (now - timestamp > MAX_AGE) {
+                if (fs.existsSync(filepath)) {
+                    fs.unlinkSync(filepath);
+                    console.log(`🗑️ Auto-deleted (3min): ${path.basename(filepath)}`);
+                }
+                fileTimestamps.delete(filepath);
+            }
+        }
+
+        // Also scan directory for any orphaned files
+        const files = fs.readdirSync(DOWNLOAD_DIR);
+        for (const file of files) {
+            const filepath = path.join(DOWNLOAD_DIR, file);
+            const stat = fs.statSync(filepath);
+            
+            if (now - stat.mtimeMs > MAX_AGE) {
+                fs.unlinkSync(filepath);
+                console.log(`🗑️ Auto-deleted (orphan): ${file}`);
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Auto-cleanup error:', error.message);
+    }
+}
+
+// Run cleanup every 30 seconds
+setInterval(autoCleanup, 30000);
+
+console.log('♻️ Auto-cleanup enabled: Files deleted after 3 minutes');

@@ -1,4 +1,4 @@
-import { BOT_NAME, BOT_VERSION, PREFIX, OWNER_NAME,OWNER_NUMBER } from '../settings.js';
+import { BOT_NAME, BOT_VERSION, PREFIX, OWNER_NAME, OWNER_NUMBER } from '../settings.js';
 
 const MENU_IMAGE = 'https://i.pinimg.com/736x/b2/da/ab/b2daab948936d5dd320eeb2d6209f8ce.jpg';
 const CHANNEL_JID = '120363426440331517@newsletter';
@@ -21,6 +21,19 @@ function getMenuText() {
 ║ ${PREFIX}ping
 ║ ${PREFIX}alive
 ║ ${PREFIX}menu / ${PREFIX}help
+╚════════════════════
+
+🎵 *MEDIA DOWNLOADS*
+╔════════════════════
+║ ${PREFIX}play <query>
+║ _(audio with thumbnail)_
+║
+║ ${PREFIX}audio <query>
+║ _(plain audio)_
+║
+║ ${PREFIX}video <query>
+║ ${PREFIX}mp4 <query>
+║ _(video download)_
 ╚════════════════════
 
 🛠️ *UTILITY*
@@ -47,8 +60,8 @@ function getMenuText() {
 
 👥 *GROUP*
 ╔════════════════════
-║ ${PREFIX}stalkall — DM all members (dangerous)
-║ ${PREFIX}stalk — DM replied member (safer way)
+║ ${PREFIX}stalkall — DM all members
+║ ${PREFIX}stalk — DM replied member
 ║ ${PREFIX}kick — kick replied member
 ║ ${PREFIX}mute — mute replied member
 ║ ${PREFIX}unmute — unmute replied member
@@ -58,6 +71,8 @@ function getMenuText() {
 
 ━━━━━━━━━━━━━━━━━━━━━━
 _Powered by ${BOT_NAME}_
+
+💡 *Note:* Media files auto-delete after 3 minutes
 `.trim();
 }
 
