@@ -20,6 +20,7 @@ import { handleGroupCommand,
     handleAntiDelete,
     cacheMessage } from './commands/group.js';
 import { registerAntiDelete } from './commands/group.js';
+import { playCommand, audioCommand, videoCommand } from './commands/media.js';
 import youtubeApi from './routes/app.js'; 
 
 const api = express();
@@ -366,8 +367,19 @@ async function startBot() {
                 case 'ping':
                     await sock.sendMessage(from, { text: '🏓 Pong!' }, { quoted: msg });
                     break;
-
-                case 'alive':
+                // Media commands
+                case 'play':
+                    await playCommand(sock, msg, args);
+               break;
+               case 'audio':
+                   await audioCommand(sock, msg, args);
+               break;
+               
+               case 'video':
+               case 'mp4':
+                   await videoCommand(sock, msg, args);
+               break;
+               case 'alive':
                     await sock.sendMessage(from, {
                         text: `✅ *${BOT_NAME} v${BOT_VERSION}*\n\n> Running 24/7\n> Prefix: ${PREFIX}\n> Owner: ${OWNER_NUMBER}\n> Uptime: ${Math.floor(process.uptime())}s`
                     }, { quoted: msg });

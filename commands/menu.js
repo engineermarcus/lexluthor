@@ -1,4 +1,4 @@
-import { BOT_NAME, BOT_VERSION, PREFIX, OWNER_NUMBER } from '../settings.js';
+import { BOT_NAME, BOT_VERSION, PREFIX, OWNER_NAME,OWNER_NUMBER } from '../settings.js';
 
 const MENU_IMAGE = 'https://i.pinimg.com/736x/b2/da/ab/b2daab948936d5dd320eeb2d6209f8ce.jpg';
 const CHANNEL_JID = '120363426440331517@newsletter';
@@ -10,7 +10,7 @@ function getMenuText() {
 ║    *${BOT_NAME} v${BOT_VERSION}*    
 ╚═══════════════════════╝
 
-👤 *Owner:* ${OWNER_NUMBER}
+👤 *Owner:* ${OWNER_NAME}
 🔰 *Prefix:* ${PREFIX}
 🌐 *Status:* Online 24/7
 
