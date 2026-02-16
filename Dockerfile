@@ -6,10 +6,15 @@ RUN apk add --no-cache \
     libwebp-tools \
     python3 \
     py3-pip \
-    curl
+    curl \
+    wget
 
 # Install yt-dlp
 RUN python3 -m pip install --break-system-packages -U yt-dlp
+
+# Download pre-built PO Token server (Rust binary - no canvas needed)
+RUN wget https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/latest/download/bgutil-pot-linux-x86_64 -O /usr/local/bin/bgutil-pot && \
+    chmod +x /usr/local/bin/bgutil-pot
 
 WORKDIR /app
 
@@ -19,17 +24,7 @@ COPY package*.json ./
 # Install bot dependencies
 RUN npm install --production
 
-# Copy PO Token server first
-COPY bgutil-ytdlp-pot-provider ./bgutil-ytdlp-pot-provider
-
-# Install PO Token server dependencies and build
-WORKDIR /app/bgutil-ytdlp-pot-provider/server
-RUN npm install && npx tsc
-
-# Back to app directory
-WORKDIR /app
-
-# Copy rest of application files
+# Copy application files
 COPY . .
 
 # Create necessary directories
@@ -38,12 +33,10 @@ RUN mkdir -p bot_session temp downloads
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'echo "Starting PO Token server..."' >> /app/start.sh && \
-    echo 'cd /app/bgutil-ytdlp-pot-provider/server' >> /app/start.sh && \
-    echo 'node build/main.js &' >> /app/start.sh && \
+    echo 'bgutil-pot server &' >> /app/start.sh && \
     echo 'echo "PO Token server started on port 4416"' >> /app/start.sh && \
     echo 'sleep 3' >> /app/start.sh && \
     echo 'echo "Starting bot..."' >> /app/start.sh && \
-    echo 'cd /app' >> /app/start.sh && \
     echo 'npm run luthor' >> /app/start.sh && \
     chmod +x /app/start.sh
 

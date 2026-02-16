@@ -5,6 +5,7 @@ temp.txt
 build/
 node_modules/
 tsconfig.tsbuildinfo
+.env
 
 dist/
 __pycache__/

@@ -7,7 +7,7 @@ export const SESSION_ID = process.env.SESSION_ID || 'Neiman_gifted-adorable-teen
 // ─── Bot Identity ──────────────────────────────────────────────────────────────
 export const BOT_NAME = process.env.BOT_NAME || 'Luthor MD';
 export const BOT_VERSION = process.env.BOT_VERSION || '1.0.0';
-export const OWNER_NUMBER = process.env.OWNER_NUMBER || '254788687886'; // your number, no +
+export const OWNER_NUMBER = process.env.OWNER_NUMBER || '254725693306'; // your number, no +
 export const OWNER_NAME = process.env.OWNER_NAME || 'Neiman Marcus';
 
 // ─── Command Settings ──────────────────────────────────────────────────────────
