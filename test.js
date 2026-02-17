@@ -29,12 +29,13 @@ function parseCookies(cookieFile) {
     return cookies;
 }
 
-async function testInstagramScrape(username) {
+export async function testInstagramScrape(username) {
     console.log(`🔍 Testing scrape for: ${username}`);
     
     const browser = await chromium.launch({ 
         headless: true,
-        args: ['--no-sandbox']
+        executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium',
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     
     const context = await browser.newContext();
@@ -44,15 +45,13 @@ async function testInstagramScrape(username) {
     
     const page = await context.newPage();
     
-    // Set required headers for Instagram API
     await page.setExtraHTTPHeaders({
-        'x-ig-app-id': '936619743392459', // Instagram web app ID (constant)
+        'x-ig-app-id': '936619743392459',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9'
     });
     
     try {
-        // Use Instagram's hidden API endpoint
         const apiUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`;
         
         const response = await page.goto(apiUrl, {
@@ -62,33 +61,23 @@ async function testInstagramScrape(username) {
         
         const jsonData = await response.json();
         
-        if (jsonData && jsonData.data && jsonData.data.user) {
-            const user = jsonData.data.user;
-            
-            console.log('\n✅ Profile found:');
-            console.log('Username:', user.username);
-            console.log('Full name:', user.full_name);
-            console.log('Biography:', user.biography);
-            console.log('Followers:', user.edge_followed_by?.count);
-            console.log('Following:', user.edge_follow?.count);
-            console.log('Posts:', user.edge_owner_to_timeline_media?.count);
-            console.log('Is private:', user.is_private);
-            console.log('Is verified:', user.is_verified);
-            console.log('Profile pic:', user.profile_pic_url_hd);
-            
-            // Full data
-            console.log('\n📦 Full JSON:');
-            console.log(JSON.stringify(user, null, 2));
-        } else {
-            console.log('❌ No user data in response');
-            console.log('Response:', JSON.stringify(jsonData, null, 2));
+        if (jsonData?.data?.user) {
+            return { success: true, user: jsonData.data.user };
         }
+
+        return { success: false, error: 'No user data in response' };
         
     } catch (error) {
-        console.error('Error:', error.message);
+        return { success: false, error: error.message };
     } finally {
         await browser.close();
     }
 }
 
-testInstagramScrape('neiman_me');
+// Only runs when called directly: node test.js
+if (process.argv[1].endsWith('test.js')) {
+    testInstagramScrape('drake').then(result => {
+        if (result.success) console.log(JSON.stringify(result.user, null, 2));
+        else console.error('❌', result.error);
+    });
+}

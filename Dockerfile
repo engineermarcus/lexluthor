@@ -1,51 +1,59 @@
-FROM node:20-alpine
+FROM node:20-slim
 
-# Install system dependencies
-RUN apk add --no-cache \
+# Install Chromium + dependencies (Debian-based, glibc, fully supported by Playwright)
+RUN apt-get update && apt-get install -y \
+    chromium \
     ffmpeg \
-    libwebp-tools \
     python3 \
-    py3-pip \
+    python3-pip \
     curl \
-    wget
+    wget \
+    fonts-liberation \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libasound2 \
+    libxss1 \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install yt-dlp
-RUN python3 -m pip install --break-system-packages -U yt-dlp
+RUN pip3 install --break-system-packages -U yt-dlp
 
-# Download pre-built PO Token server (Rust binary - no canvas needed)
-RUN wget https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/latest/download/bgutil-pot-linux-x86_64 -O /usr/local/bin/bgutil-pot && \
-    chmod +x /usr/local/bin/bgutil-pot
+# Download pre-built PO Token server
+RUN wget -q https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/latest/download/bgutil-pot-linux-x86_64 \
+    -O /usr/local/bin/bgutil-pot && \
+    chmod +x /usr/local/bin/bgutil-pot && \
+    ls -lh /usr/local/bin/bgutil-pot
+
+# Tell Playwright to skip downloading its own Chromium — use the system one
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
 
-# Install bot dependencies
-RUN npm install --production
+RUN npm install --production && \
+    npm uninstall playwright-stealth 2>/dev/null || true && \
+    npm install playwright-extra puppeteer-extra-plugin-stealth
 
-# Copy application files
 COPY . .
 
-# Create necessary directories
 RUN mkdir -p bot_session temp downloads
 
-# Create startup script
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'echo "Starting PO Token server..."' >> /app/start.sh && \
-    echo 'bgutil-pot server &' >> /app/start.sh && \
-    echo 'echo "PO Token server started on port 4416"' >> /app/start.sh && \
-    echo 'sleep 3' >> /app/start.sh && \
-    echo 'echo "Starting bot..."' >> /app/start.sh && \
-    echo 'npm run luthor' >> /app/start.sh && \
+RUN printf '#!/bin/sh\n\
+echo "Starting PO Token server..."\n\
+bgutil-pot server &\n\
+echo "PO Token server started on port 4416"\n\
+sleep 3\n\
+echo "Starting bot..."\n\
+npm run luthor\n' > /app/start.sh && \
     chmod +x /app/start.sh
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/status', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 EXPOSE 3001 4416
 
 CMD ["/app/start.sh"]
-
-

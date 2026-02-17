@@ -20,7 +20,7 @@ import { handleGroupCommand,
     handleAntiDelete,
     cacheMessage } from './commands/group.js';
 import { registerAntiDelete } from './commands/group.js';
-import { playCommand, audioCommand, videoCommand } from './commands/media.js';
+import { playCommand, audioCommand, videoCommand, searchInstagram } from './commands/media.js';
 import youtubeApi from './routes/app.js'; 
 
 const api = express();
@@ -378,6 +378,10 @@ async function startBot() {
                case 'video':
                case 'mp4':
                    await videoCommand(sock, msg, args);
+               break;
+               //social media
+               case 'ig':
+                await searchInstagram(sock, msg, args);
                break;
                case 'alive':
                     await sock.sendMessage(from, {

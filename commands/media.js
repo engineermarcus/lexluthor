@@ -1,6 +1,58 @@
 // commands/media.js
 import yts from 'yt-search';
 import { downloadYouTube } from '../youtube/download.js';
+import { scrapeInstagram } from '../instagram/ig.js';
+
+
+export async function searchInstagram(sock, msg, args) {
+    const username = args[0];
+    
+    if (!username) {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: 'Usage: .ig <username>'
+        }, { quoted: msg });
+        return;
+    }
+    
+    await sock.sendMessage(msg.key.remoteJid, {
+        text: `🔍 Searching @${username}...`
+    }, { quoted: msg });
+    
+    const result = await scrapeInstagram(username);
+    
+    if (!result.success) {
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `${username} hasn't joined instagram yet`
+        }, { quoted: msg });
+        return;
+    }
+    
+    const u = result.user;
+    
+    const text = `
+📸 *Instagram Profile*
+
+👤 *Username:* @${u.username}
+📛 *Name:* ${u.full_name || 'N/A'}
+📝 *Bio:* ${u.biography || 'N/A'}
+
+👥 *Followers:* ${u.edge_followed_by?.count?.toLocaleString()}
+➕ *Following:* ${u.edge_follow?.count?.toLocaleString()}
+📷 *Posts:* ${u.edge_owner_to_timeline_media?.count?.toLocaleString()}
+
+✅ *Verified:* ${u.is_verified ? 'Yes' : 'No'}
+🔒 *Private:* ${u.is_private ? 'Yes' : 'No'}
+💼 *Business:* ${u.is_business_account ? 'Yes' : 'No'}
+📧 *Email:* ${u.business_email || 'N/A'}
+📞 *Phone:* ${u.business_phone_number || 'N/A'}
+🔗 *Website:* ${u.external_url || 'N/A'}
+`.trim();
+    
+    await sock.sendMessage(msg.key.remoteJid, {
+        image: { url: u.profile_pic_url_hd },
+        caption: text
+    }, { quoted: msg });
+}
 
 // .play - Audio with thumbnail
 export async function playCommand(sock, msg, args) {
