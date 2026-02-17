@@ -20,12 +20,6 @@ RUN apt-get update && apt-get install -y \
 # Install yt-dlp
 RUN pip3 install --break-system-packages -U yt-dlp
 
-# Download pre-built PO Token server (non-fatal — Render may block GitHub during build)
-RUN wget -q https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/latest/download/bgutil-pot-linux-x86_64 \
-    -O /usr/local/bin/bgutil-pot && \
-    chmod +x /usr/local/bin/bgutil-pot && \
-    echo "✅ bgutil-pot installed" || echo "⚠️ bgutil-pot download failed — YouTube POT tokens disabled"
-
 # Tell Playwright to skip downloading its own Chromium — use the system one
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
@@ -40,17 +34,16 @@ RUN npm install --production && \
 
 COPY . .
 
+# Install bgutil POT server dependencies
+RUN cd bgutil-ytdlp-pot-provider/server && npm install --production
+
 RUN mkdir -p bot_session temp downloads
 
 RUN printf '#!/bin/sh\n\
-if command -v bgutil-pot > /dev/null 2>&1; then\n\
-  echo "Starting PO Token server..."\n\
-  bgutil-pot server &\n\
-  echo "PO Token server started on port 4416"\n\
-  sleep 3\n\
-else\n\
-  echo "⚠️ bgutil-pot not found — skipping PO Token server"\n\
-fi\n\
+echo "Starting PO Token server..."\n\
+node /app/bgutil-ytdlp-pot-provider/server/build/main.js &\n\
+echo "PO Token server started on port 4416"\n\
+sleep 3\n\
 echo "Starting bot..."\n\
 npm run luthor\n' > /app/start.sh && \
     chmod +x /app/start.sh
