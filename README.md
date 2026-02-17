@@ -18,7 +18,7 @@ Your WhatsApp contacts have no idea what's about to hit them.
 
 ## WHAT IT DOES
 
-Reads your statuses. Likes them too. Converts your terrible memes into stickers. Translates messages you were too proud to admit you didn't understand. Responds to commands while you sleep.
+Reads your statuses. Likes them too. Converts your terrible memes into stickers. Translates messages you were too proud to admit you didn't understand. Scrapes Instagram profiles. Downloads YouTube audio and video. Responds to commands while you sleep.
 
 It doesn't need your supervision. That's the point.
 
@@ -32,9 +32,12 @@ It doesn't need your supervision. That's the point.
 | Sticker conversion | Images, videos, GIFs — all fair game |
 | Translation | .swahili, .english, .french — reply or type |
 | Text to speech | .tts — reply or type |
+| Instagram scraping | .ig — profile info, followers, bio |
+| YouTube downloads | .play, .audio, .video — audio and video |
 | Group management | Kick, mute, antilink, welcome/goodbye |
-| Fun commands | memes, jokes, 8ball, insults and more |
+| Fun commands | Memes, jokes, 8ball, insults and more |
 | Anti-delete | Catches deleted messages and exposes them |
+| Owner only mode | Lock all commands to owner only |
 | **Auto-reconnect** | Survives crashes and server downtime |
 | **Health monitoring** | Self-healing and stays alive 24/7 |
 
@@ -57,6 +60,7 @@ It doesn't need your supervision. That's the point.
 |---|---|
 | `SESSION_ID` | Your session ID from session manager |
 | `OWNER_NUMBER` | Your WhatsApp number (without +) |
+| `COOKIE_CONTENT` | *(Optional)* Your Instagram cookies for `.ig` command |
 
 5. Click **Deploy**
 
@@ -79,12 +83,6 @@ Render's free tier sleeps after 15 minutes of inactivity. **You MUST set up Upti
 5. **Click "Create Monitor"**
 
 **Done!** Your bot will now stay alive 24/7. UptimeRobot will ping it every 5 minutes, preventing Render from putting it to sleep. 🔥
-
-#### How to Find Your Render App URL:
-1. Go to your Render dashboard
-2. Click on your deployed app
-3. Copy the URL at the top (looks like `https://lexluthor-xyz.onrender.com`)
-4. Add `/ping` to the end: `https://lexluthor-xyz.onrender.com/ping`
 
 ---
 
@@ -149,26 +147,30 @@ pm2 startup
 # Clone
 git clone https://github.com/engineermarcus/lexluthor && cd lexluthor
 
-# Edit settings.js with your SESSION_ID and OWNER_NUMBER
-nano settings.js
-
 # Build the docker image 
 docker build -t lexluthor .
 
 # Run it
-docker run -d --name luthor --restart unless-stopped lexluthor
+docker run -d --name luthor --restart unless-stopped -p 3001:3001 lexluthor
 ```
 
 ---
 
 ## 🛠️ CONFIGURATION
 
-Edit `settings.js` file directly (no .env needed):
+Edit `settings.js` directly or set environment variables:
 
 ```javascript
 // Essential
 export const SESSION_ID = 'your_session_id_here';
 export const OWNER_NUMBER = '254700000000'; // No + sign
+
+// Bot identity
+export const BOT_NAME = 'Luthor MD';
+export const OWNER_NAME = 'Your Name';
+
+// Access control
+export const OWNER_ONLY = true; // true = only owner can use commands
 
 // Features (true/false)
 export const WELCOME = true;
@@ -179,11 +181,15 @@ export const AUTO_VIEW_STATUS = true;
 export const AUTO_LIKE_STATUS = true;
 
 // Auto Presence (typing, recording, online, none)
-export const AUTO_PRESENCE = 'typing';
+export const AUTO_PRESENCE = 'recording';
 
 // Customize messages
-export const WELCOME_MESSAGE = '👋 Welcome @{name} to the group!';
-export const GOODBYE_MESSAGE = '👋 Goodbye @{name}, we will miss you!';
+export const WELCOME_MESSAGE = '👋 Welcome {name}, we are happy to have you here';
+export const GOODBYE_MESSAGE = '👋 Goodbye {name}';
+
+// Instagram (optional)
+export const COOKIE_CONTENT = 'your_instagram_cookie_content';
+// Navigate to instagram.com, login, use the "cookies.txt LOCALLY" extension, export cookies, paste content here
 ```
 
 ---
@@ -199,34 +205,6 @@ Your bot exposes these endpoints:
 
 ---
 
-## 🐛 TROUBLESHOOTING
-
-### Bot not connecting?
-1. Make sure your SESSION_ID is valid
-2. Check if you're logged out on your phone
-3. Get a fresh session from the session manager
-
-### Welcome/Goodbye not working?
-- Make sure `WELCOME` and `GOODBYE` are set to `true` in settings.js
-- Bot doesn't need admin for welcome/goodbye (just regular messages)
-- Check console logs when someone joins/leaves
-
-### Bot keeps going offline on Render?
-- **Did you set up UptimeRobot?** This is MANDATORY for Render free tier
-- Check your Render logs for errors
-- Make sure the ping URL is correct
-
-### Commands not responding?
-- Check your PREFIX setting in settings.js (default is `.`)
-- Make sure you're using the right syntax: `.ping`, `.menu`, etc.
-- Check console logs to see if bot is receiving messages
-
-### Bot slow to respond?
-- Make sure you're using the optimized `group.js` with caching
-- Check if you have the latest version from GitHub
-
----
-
 ## 📝 COMMANDS
 
 ### Core
@@ -234,11 +212,19 @@ Your bot exposes these endpoints:
 - `.alive` - Bot status with uptime
 - `.menu` / `.help` - Show all commands
 
+### Media Downloads
+- `.play <query>` - Download audio with thumbnail
+- `.audio <query>` - Download plain audio
+- `.video <query>` / `.mp4 <query>` - Download video
+
+### Social Media
+- `.ig <username>` - Instagram profile info, followers, bio, pfp
+
 ### Utility
 - `.sticker` / `.s` - Convert image/video to sticker (reply to media)
-- `.toimg` - Convert sticker to image
+- `.toimg` / `.toimage` - Convert sticker to image
 - `.tts <text>` - Text to speech
-- `.english` / `.swahili` / `.french` etc. - Translate
+- `.english` / `.swahili` / `.french` / `.spanish` / `.arabic` / `.german` - Translate (reply or type)
 
 ### Fun
 - `.meme` - Random meme
@@ -246,36 +232,67 @@ Your bot exposes these endpoints:
 - `.8ball <question>` - Magic 8 ball
 - `.insult` - Roast someone
 - `.yesno` - Yes or no with GIF
+- `.bs` - Corporate nonsense generator
+- `.bored` - Activity suggestion
 
 ### Group (Owner Only)
-- `.kick` - Kick user (reply) - **Needs admin**
-- `.mute` - Mute user (reply) - **Needs admin to delete**
+- `.kick` - Kick user (reply) — **Needs admin**
+- `.mute` - Mute user (reply) — **Needs admin**
 - `.unmute` - Unmute user
-- `.muteall` - Mute entire group - **Needs admin to delete**
+- `.muteall` - Mute entire group — **Needs admin**
 - `.unmuteall` - Unmute group
 - `.stalk` - DM a user (reply)
-- `.stalkall` - DM all members (dangerous!)
+- `.stalkall` - DM all members
 
-**Note:** Welcome/Goodbye work without admin privileges!
+**Note:** Welcome/Goodbye work without admin privileges.
 
 ---
 
 ## 🔒 SECURITY NOTES
 
-- Never share your SESSION_ID
-- Don't commit settings.js with your real SESSION_ID to GitHub
-- The bot stores session data in `bot_session/` folder
-- Your phone can be off - bot runs independently
+- Never share your `SESSION_ID`
+- Don't commit `settings.js` with your real credentials to GitHub
+- Never push your `COOKIE_CONTENT` — add it as an environment variable on Render
+- The bot stores session data in `bot_session/` — this is gitignored
+- Your phone can be off — bot runs independently
+
+---
+
+## 🐛 TROUBLESHOOTING
+
+### Bot not connecting?
+- Make sure your `SESSION_ID` is valid
+- Get a fresh session from the session manager if needed
+
+### `.ig` not working?
+- Set `COOKIE_CONTENT` in your environment variables
+- Navigate to instagram.com, login, use the **cookies.txt LOCALLY** browser extension, export and paste the content
+
+### Welcome/Goodbye not working?
+- Make sure `WELCOME` and `GOODBYE` are `true` in settings.js
+- Bot doesn't need admin for welcome/goodbye
+
+### Bot keeps going offline on Render?
+- **Did you set up UptimeRobot?** This is MANDATORY for Render free tier
+- Make sure the ping URL is correct: `https://your-app.onrender.com/ping`
+
+### Commands not responding?
+- Check your `PREFIX` in settings.js (default is `.`)
+- If `OWNER_ONLY` is `true`, only the owner number can run commands
+
+### YouTube downloads failing?
+- The PO Token server (`bgutil-ytdlp-pot-provider`) must be running
+- Check container logs for `PO Token server started on port 4416`
 
 ---
 
 ## 💡 PRO TIPS
 
-- **Bot works even when your phone is off** - Session is stored on the server
-- **Set AUTO_PRESENCE to 'recording'** for a cooler status effect
+- **Bot works even when your phone is off** — session is stored on the server
+- **Set `AUTO_PRESENCE` to `'recording'`** for a cooler status effect
 - **Use PM2 on VPS** for automatic restarts if bot crashes
-- **UptimeRobot is mandatory** for Render deployments (free tier sleeps)
-- **Check logs regularly** to catch any issues early
+- **UptimeRobot is mandatory** for Render free tier
+- **Set `OWNER_ONLY` to `true`** to keep the bot private
 
 ---
 
@@ -287,7 +304,7 @@ Pull requests are welcome. For major changes, please open an issue first.
 
 ## ⚖️ LICENSE
 
-MIT - Do whatever you want, just don't blame me.
+MIT — Do whatever you want, just don't blame me.
 
 ---
 

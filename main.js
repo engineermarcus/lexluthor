@@ -335,7 +335,10 @@ async function startBot() {
             console.log(`👑 Owner   : ${isOwner}`);
 
             if (AUTO_READ) await sock.readMessages([msg.key]);
-            if ((OWNER_ONLY === true || OWNER_ONLY === 'true') && !isOwner) continue;
+            if ((OWNER_ONLY === true || OWNER_ONLY === 'true') && !isOwner) {
+    console.log(`🚫 Blocked: ${senderNumber} tried to use ${body}`);
+    continue;
+}
             // ── Enforce mute & antilink on commands in groups ──────────────
             if (isGroup) {
                 await enforceMute(sock, msg);

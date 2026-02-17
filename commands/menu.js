@@ -1,4 +1,3 @@
-
 import { BOT_NAME, BOT_VERSION, PREFIX, OWNER_NAME, OWNER_NUMBER } from '../settings.js';
 
 const MENU_IMAGE = 'https://i.pinimg.com/736x/b2/da/ab/b2daab948936d5dd320eeb2d6209f8ce.jpg';
@@ -35,6 +34,12 @@ function getMenuText() {
 ║ ${PREFIX}video <query>
 ║ ${PREFIX}mp4 <query>
 ║ _(video download)_
+╚════════════════════
+
+📸 *SOCIAL MEDIA*
+╔════════════════════
+║ ${PREFIX}ig <username>
+║ _(Instagram profile info)_
 ╚════════════════════
 
 🛠️ *UTILITY*
@@ -105,5 +110,3 @@ export async function sendMenu(sock, from, msg) {
         console.error('❌ Menu error:', error.message);
     }
 }
-
-
